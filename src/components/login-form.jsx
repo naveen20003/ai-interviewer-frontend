@@ -148,7 +148,11 @@ export function LoginForm({
                           );
                       }
 
-                      loginWithAccessToken(accessToken);
+                      const loggedIn = loginWithAccessToken(accessToken);
+
+                      if (!loggedIn) {
+                        throw new Error("Failed to store access token");
+                      }
 
                       router.replace("/dashboard");
 

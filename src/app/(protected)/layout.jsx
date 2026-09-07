@@ -1,14 +1,14 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+export default async function ProtectedLayout({ children }) {
+  const cookieStore = await cookies();
 
-export default async function protectedLayout({ children }) {
-     const token = (await cookies()).get("refreshToken");
-     const OauthToken = (await cookies()).get("next-auth.session-token");
-    
-     if (!token && !OauthToken) {
-        redirect("/login");
-     };
+  const refreshToken = cookieStore.get("refreshToken");
 
-     return children;
+  if (!refreshToken) {
+    redirect("/login");
+  }
+
+  return children;
 }
