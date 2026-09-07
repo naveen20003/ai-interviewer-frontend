@@ -1,14 +1,9 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import ProtectedRoute from "@/components/protected-route";
 
-export default async function ProtectedLayout({ children }) {
-  const cookieStore = await cookies();
-
-  const refreshToken = cookieStore.get("refreshToken");
-
-  if (!refreshToken) {
-    redirect("/login");
-  }
-
-  return children;
+export default function ProtectedLayout({ children }) {
+  return (
+    <ProtectedRoute>
+      {children}
+    </ProtectedRoute>
+  );
 }
