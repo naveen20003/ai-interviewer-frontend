@@ -9,7 +9,7 @@ function CallToAction() {
             Take Your First Mock Today!
         </h1>
         <div className="w-full flex justify-center">
-         <Button onClick={() => router.push("/signup")}>Get Here </Button>
+         <Button onClick={() => router.push("/signup")}>Start Here </Button>
         </div>
     </div>
   )

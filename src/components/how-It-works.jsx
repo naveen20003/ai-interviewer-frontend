@@ -6,11 +6,11 @@ function HowItWorks() {
             How It Works
         </h1>
 
-        <div className="grid grid-cols-2 gap-10 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-6xl mx-auto p-5">
 
             {/* AI Interviewer */}
-            <div className="w-full border-r">
-            <h2 className="text-xl md:text-2xl font-semibold mb-10">
+            <div className="w-full md:border-r">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-10">
                 AI Interviewer
             </h2>
 
@@ -62,7 +62,7 @@ function HowItWorks() {
           
             {/* Resume Analyzer */}
             <div className="w-full">
-            <h2 className="text-xl md:text-2xl font-semibold mb-10">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-10">
                 Resume Analyzer
             </h2>
 
