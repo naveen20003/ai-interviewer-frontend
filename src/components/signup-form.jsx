@@ -68,26 +68,15 @@ export function SignupForm({
         data
       );
 
-      toast.add({
-        type: "success",
-        description: "Account Has Been Created Successfully!",
-      });
+      toast.success("Account Has Been Created Successfully!");
 
       router.push("/login");
     } catch (error) {
-      console.log("SIGNUP ERROR:", error);
-      console.log("STATUS:", error.response?.status);
-      console.log("DATA:", error.response?.data);
-
-      toast.add({
-        type: "error",
-        description:
-          error.response?.data?.message ||
-          "Unable to create account",
-        priority: "high",
-      });
-
       setLoading(false);
+      toast.error(
+        error.response?.data?.message || "Unable to create account"
+      );
+
     }
   };
 

@@ -82,17 +82,10 @@ export function LoginForm({ className, ...props }) {
       tokenStore.setToken(accessToken);
       setAccessToken(accessToken);
 
-      toast.add({
-        type: "success",
-        description: "Logged In Successfully!",
-      });
+      toast.success("Logedin Successfully!");
 
       router.push("/dashboard");
     } catch (error) {
-      console.log("LOGIN ERROR:", error);
-      console.log("STATUS:", error.response?.status);
-      console.log("DATA:", error.response?.data);
-
       setLoading(false);
 
       toast.error(
@@ -171,13 +164,10 @@ export function LoginForm({ className, ...props }) {
         backendLoginStarted.current = false;
         setOauthLoading(false);
 
-        toast.add({
-          type: "error",
-          description:
-            error.response?.data?.message ||
-            "Google login failed",
-          priority: "high",
-        });
+        toast.error(
+          error.response?.data?.message ||
+          "Google login failed"
+        );
       }
     };
 
