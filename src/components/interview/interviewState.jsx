@@ -39,21 +39,21 @@ function InterviewStatus({ state }) {
 };
 
   const phase = stateToPhase[state] || "idle";
-  // console.log("interviewer State: ", state);
-  // console.log("interviewer Phase: ", phase);
+  console.log("interviewer State: ", state);
+  console.log("interviewer Phase: ", phase);
   
   return (
     <div className="flex gap-2 rounded-2xl p-4">
       <p className="text-sm font-semibold">
-        Interviewer State: 
+        {
+          phase === "listening" &&
+         <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>
+        }
       </p>
       <p className="text-sm font-semibold">
         {phase}
       </p>
 
-      {/* <p className="text-xs text-muted-foreground">
-        {current.description}
-      </p> */}
     </div>
   );
 }

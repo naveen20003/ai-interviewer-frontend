@@ -28,34 +28,36 @@ function TextMode({ userVoice, socket }) {
         setAnswer("");
     }
   return (
-    <div className="flex justify-center">
-        <form onSubmit={HandleSubmit} className="w-[600px] mb-3 max-w-sm md:max-w-2xl fixed bottom-0">
-            <div className="relative md:max-w-2xl">
-                <Input
-                    type="text"
-                    placeholder="type answer"
-                    value={answer}
-                    onChange={(e) => {
-                    setAnswer(e.target.value);
-                    setIsInputActive(e.target.value !== "");
-                    }}
-                    className="h-20 border-4 bg-input pr-24"
-                    required
-                />
+    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-3 md:px-6">
+        <form
+            onSubmit={HandleSubmit}
+            className="w-full max-w-[700px]"
+        >
+            <div className="relative">
+            <Input
+                type="text"
+                placeholder="Type answer"
+                value={answer}
+                onChange={(e) => {
+                setAnswer(e.target.value);
+                setIsInputActive(e.target.value !== "");
+                }}
+                className="h-16 w-full border-2 bg-input pr-16"
+                required
+            />
 
-                {/* <VoiceMode className="absolute bottom-1 right-12" /> */}
-
-                {isInputActive && (
-                    <Button
-                    type="submit"
-                    className="absolute bottom-1 right-1 bg-primary text-primary-foreground"
-                    >
-                    <SendHorizontal />
-                    </Button>
-                )}
+            {isInputActive && (
+                <Button
+                type="submit"
+                size="icon"
+                className="absolute bottom-2 right-2"
+                >
+                <SendHorizontal className="h-5 w-5" />
+                </Button>
+            )}
             </div>
         </form>
-    </div>
+        </div>
   )
 }
 

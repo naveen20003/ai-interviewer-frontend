@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Spinner } from "./ui/spinner";
 
 const profileSchema = z.object({
   name: z.string()
@@ -33,6 +34,9 @@ const profileSchema = z.object({
 function ProfileDialog({setUser}) {
   const router = useRouter();
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const form = useForm({
       resolver: zodResolver(profileSchema),
       defaultValues: {
@@ -50,7 +54,7 @@ function ProfileDialog({setUser}) {
         setUser(profileData.data);
         setData(profileData.data);
         // console.log(profileData.data);
-        
+        setProfileLoading(false);
         form.reset({
           name: profileData.data.name,
           email: profileData.data.email
@@ -65,6 +69,7 @@ function ProfileDialog({setUser}) {
   
 
     const onSubmit = async (data) => {
+       setLoading(true);
       try {
         // console.log("FORM DATA:", data);
         // console.log("AVATAR:", data.avatar);
@@ -87,37 +92,45 @@ function ProfileDialog({setUser}) {
         const res = await api.put("/users/profile", formData);
         setData(res.data.data);
         setUser(res.data.data);
+        setLoading(false);
         // console.log(res.data.data);
-        router.push("/dashboard");                 
+        // router.push("/dashboard");                 
       } catch (error) {
         console.error(error);
       }
     }
-
+    
     const handleDeleteUser = async(id) => {
-        try {
-          await api.delete("users/delete");
-          router.push("/login")
+      setDeleteLoading(true);
+      try {
+        await api.delete("users/delete");
+        router.push("/login")
+        setDeleteLoading(false);
         } catch (error) {
           console.error(error);
         };
     };
-
-    
     
   return (
     <DialogContent className="sm:max-w-sm">
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <DialogHeader>
-          <DialogTitle>Edit profile</DialogTitle>
+      {
+        profileLoading ?(
+            <div className="flex min-h-[300px] items-center justify-center">
+              <Spinner className="size-10" />
+            </div>
+          ) : 
+        (
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
 
-          <DialogDescription>
-            Make changes to your profile here. Click save when you're done.
-          </DialogDescription>
-        </DialogHeader>
+            <DialogDescription>
+              Make changes to your profile here. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
 
-        <FieldGroup>
-          <Avatar className="size-20">
+          <FieldGroup>           
+              <Avatar className="size-20">
                 <AvatarImage
                   src={data?.avatar}
                   alt={data?.name}
@@ -127,95 +140,117 @@ function ProfileDialog({setUser}) {
                 </AvatarFallback>
               </Avatar>
 
+                <Controller
+                  name="avatar"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="avatar">
+                        Profile Image
+                      </FieldLabel>
+
+                      <Input
+                        id="avatar"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] ?? null;
+
+                          // console.log("SELECTED FILE:", file);
+
+                          field.onChange(file);
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
+
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+            <Field>
               <Controller
-                name="avatar"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="avatar">
-                      Profile Image
-                    </FieldLabel>
+                  name="name"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Full Name</FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                        className="bg-input"                      
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+            </Field>
 
-                    <Input
-                      id="avatar"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] ?? null;
+            <Field>
+              <Controller
+                  name="email"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                        className="bg-input"
+                      />
+                      {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                    </Field>
+                  )}
+                />
+            </Field>
+          </FieldGroup>
 
-                        // console.log("SELECTED FILE:", file);
+          <DialogFooter>
+            <DialogClose
+              render={
+                <Button variant="outline">
+                  Cancel
+                </Button>
+              }
+            />
 
-                        field.onChange(file);
-                      }}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
-
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-          <Field>
-            <Controller
-                name="name"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Full Name</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      aria-invalid={fieldState.invalid}
-                      autoComplete="off"
-                      className="bg-input"                      
-                    />
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-          </Field>
-
-          <Field>
-            <Controller
-                name="email"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      aria-invalid={fieldState.invalid}
-                      autoComplete="off"
-                      className="bg-input"
-                    />
-                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                  </Field>
-                )}
-              />
-          </Field>
-        </FieldGroup>
-
-        <DialogFooter>
-          <DialogClose
-            render={
-              <Button variant="outline">
-                Cancel
-              </Button>
-            }
-          />
-
-          <Button type="submit">
-            Save changes
-          </Button>
-          <Button variant="destructive" onClick={handleDeleteUser}>
-             Delete Your Account!
-          </Button>
-        </DialogFooter>
-      </form>
+            <Button type="submit" disabled={loading}>
+              {
+                loading ? (
+                  <>
+                    <Spinner />
+                    saving...
+                  </>
+                ) :
+                (
+                  "Save Changes"
+                )
+              }
+            </Button>
+            <Button variant="destructive" disabled={deleteLoading} onClick={handleDeleteUser}>
+              {
+                deleteLoading ? (
+                  <>
+                    <Spinner />
+                     Deleting...
+                  </>
+                ) :
+                (
+                  "Delete Your Account!"
+                )
+              }
+            </Button>
+          </DialogFooter>
+        </form>
+        )
+      }
     </DialogContent>
   );
 }

@@ -1,4 +1,7 @@
-import InterviewHeader from "./InterviewHeader"; 
+"use client";
+
+import { useEffect } from "react";
+import InterviewHeader from "./InterviewHeader";
 import QuestionDisplay from "./QuestionDisplay";
 import TextMode from "./modes/TextMode";
 import VoiceMode from "./modes/VoiceMode";
@@ -7,9 +10,11 @@ import { useInterview } from "@/context/interviewContext";
 import MessageScroller from "./messageScroller";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
-import { ToastAction } from "../ui/toast";
+
 function InterviewRoom() {
     const router = useRouter();
+    const params = useParams();
+
     const {
         socket,
         interviewData,
@@ -18,33 +23,33 @@ function InterviewRoom() {
         isInterviewEnd
     } = useInterview();
 
-    const params = useParams();
+    useEffect(() => {
+        if (!isInterviewEnd) return;
 
-    // console.log(
-    //     "INTERVIEW ROOM DATA:",
-    //     interviewData
-    // );
-    
-    // console.log(
-    //     "INTERVIEW ROOM state:",
-    //     interviewData?.state
-    // );
-
-    if (isInterviewEnd) {
         toast.success("Mock Interview Completed! 🎉", {
-            description: "Redirecting you back to the dashboard in 3 seconds...",
+            description:
+                "Redirecting you back to the dashboard in 3 seconds...",
             action: {
-            label: "Go Now",
-            onClick: () => router.push("/dashboard"),
+                label: "Go Now",
+                onClick: () => router.push("/dashboard"),
             },
         });
 
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             router.push("/dashboard");
         }, 3000);
 
-        return;
-        }
+        return () => clearTimeout(timer);
+    }, [isInterviewEnd, router]);
+
+    if (isInterviewEnd) {
+        return (
+            <div className="min-h-screen w-full flex items-center justify-center">
+                <Spinner className="size-10" />
+            </div>
+        );
+    }
+
     if (!interviewData) {
         return (
             <div className="min-h-screen w-full flex justify-center items-center">
@@ -54,31 +59,19 @@ function InterviewRoom() {
     }
 
     return (
-        <div className="min-h-screen p-3 overflow-hidden flex flex-col gap-5">
+        <div className="min-h-screen w-full overflow-hidden flex flex-col gap-5 p-3 pb-28">
 
             <InterviewHeader
-                questionNumber={
-                    interviewData.questionNumber
-                }
-                totalQuestion={
-                    interviewData.totalQuestions
-                }
-                hint={
-                    interviewData?.hint?.hint
-                }
+                questionNumber={interviewData.questionNumber}
+                totalQuestion={interviewData.totalQuestions}
+                hint={interviewData?.hint?.hint}
                 state={interviewData?.state}
             />
 
             <QuestionDisplay
-                Question={
-                    interviewData?.currentQuestion?.question
-                }
-                follow_up={
-                    interviewData?.followup
-                }
-                isFollowUP={
-                    interviewData?.isFollowUP
-                }
+                Question={interviewData?.currentQuestion?.question}
+                follow_up={interviewData?.followup}
+                isFollowUP={interviewData?.isFollowUP}
             />
 
             <p className="flex justify-center">

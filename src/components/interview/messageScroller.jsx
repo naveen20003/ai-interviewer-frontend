@@ -27,7 +27,7 @@ function MessageScroller({ Answer }) {
 
   return (
     <div className="relative flex justify-center">
-        <ScrollArea className="h-32 w-[580px] rounded-xl border">
+        <ScrollArea className="h-50 w-[580px] rounded-xl border">
             <div className="p-5 text-3xl">
               {Answer}
             </div>

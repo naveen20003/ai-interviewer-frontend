@@ -1,19 +1,21 @@
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+"use client";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import api from "@/lib/api";
 import { tokenStore } from "@/lib/tokenStore";
-import { toast, Toaster  } from "@/components/ui/toast"
-import { useRouter } from "next/navigation"
+import { toast } from "sonner";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
@@ -21,259 +23,354 @@ import {
   FieldLabel,
   FieldError,
   FieldSeparator,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { signIn, useSession } from "next-auth/react";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useRef, useState } from "react";
-import CheckEmail from "./checkmail";
-import GoogleLogin from "./auth-googlelogin";
-import { useSearchParams } from "next/navigation";
+import { Spinner } from "./ui/spinner";
+
 const loginSchema = z.object({
   email: z.email("Invalid email"),
-  password: z.string()
-  .min(1, "Password is required")
-  .min(8, "Password must be at least 8 characters"),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .min(8, "Password must be at least 8 characters"),
 });
 
-export function LoginForm({
- 
-  className,
-  ...props
-}) {
+export function LoginForm({ className, ...props }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const isOAuthLogin =
-    searchParams.get("oauth") === "true";
+  const { setAccessToken, loginWithAccessToken } = useAuth();
+
+  const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
+
   const [isVerified, setIsVerified] = useState(null);
   const [email, setEmail] = useState(null);
-  const { setAccessToken } = useAuth();
-  const router = useRouter();
-   const form = useForm({
+
+  const isOAuthLogin = searchParams.get("oauth") === "true";
+
+  const form = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
-  }})
-  
-    const onSubmit = async (data) => {
-      // console.log("Form Submitted Successfully:", data);
+    },
+  });
 
-      setEmail(data.email);
-      // console.log(data.email);
+  /*
+   * ----------------------------------------------------
+   * NORMAL EMAIL/PASSWORD LOGIN
+   * ----------------------------------------------------
+   */
+
+  const onSubmit = async (data) => {
+    setLoading(true);
+    setEmail(data.email);
+
+    try {
+      const res = await api.post("/users/login", data);
+
+      const { accessToken } = res.data;
+
+      if (!accessToken) {
+        throw new Error("No access token returned");
+      }
+
+      tokenStore.setToken(accessToken);
+      setAccessToken(accessToken);
+
+      toast.add({
+        type: "success",
+        description: "Logged In Successfully!",
+      });
+
+      router.push("/dashboard");
+    } catch (error) {
+      console.log("LOGIN ERROR:", error);
+      console.log("STATUS:", error.response?.status);
+      console.log("DATA:", error.response?.data);
+
+      setLoading(false);
+
+      toast.error(
+        error.response?.data?.message || "Unable to create account"
+      );
+    }
+  };
+
+  /*
+   * ----------------------------------------------------
+   * GOOGLE OAUTH LOGIN
+   * ----------------------------------------------------
+   */
+
+  const { data: session, status } = useSession();
+
+  const backendLoginStarted = useRef(false);
+
+  useEffect(() => {
+    if (
+      !isOAuthLogin ||
+      status !== "authenticated" ||
+      !session ||
+      backendLoginStarted.current
+    ) {
+      return;
+    }
+
+    backendLoginStarted.current = true;
+    setOauthLoading(true);
+
+    const loginToBackend = async () => {
       try {
-        const res = await api.post("/users/login", data);
+        const response = await api.post(
+          "/users/googleauth",
+          {
+            name: session.user?.name,
+            email: session.user?.email,
+            image: session.user?.image,
+            provider: session.provider,
+            providerAccountId: session.providerAccountId,
+          },
+          {
+            withCredentials: true,
+          }
+        );
 
-        // console.log("Login response:", res.data);
-        
-        
-        const { accessToken } = res.data;
+        const accessToken = response.data?.accessToken;
 
-        tokenStore.setToken(accessToken);
-        setAccessToken(accessToken);
-        // console.log(
-        //   "Access token stored:",
-        //   tokenStore.getToken()
-        // );
+        if (!accessToken) {
+          throw new Error("No access token returned");
+        }
+
+        /*
+         * If loginWithAccessToken is async in your AuthContext,
+         * change this to:
+         *
+         * const loggedIn = await loginWithAccessToken(accessToken);
+         *
+         * Otherwise keep it as it is.
+         */
+
+        const loggedIn = loginWithAccessToken(accessToken);
+
+        if (!loggedIn) {
+          throw new Error("Failed to store access token");
+        }
+
+        router.replace("/dashboard");
+      } catch (error) {
+        console.error(
+          "OAuth backend login failed:",
+          error.response?.data || error.message
+        );
+
+        backendLoginStarted.current = false;
+        setOauthLoading(false);
 
         toast.add({
-          type: "success",
-          description: "Logged In Successfully!",
+          type: "error",
+          description:
+            error.response?.data?.message ||
+            "Google login failed",
+          priority: "high",
         });
-
-        router.push("/dashboard");
-
-      } catch (error) {
-        if (error.response?.data) {
-          setIsVerified(error.response?.data?.code);
-          toast.add({
-            type: "error",
-            description: error.response.data.message,
-            priority: "high",
-          });
-        } else {
-          console.error(error);
-        }
       }
     };
 
-    const {
-        loginWithAccessToken
-      } = useAuth();
-    
-      const {
-        data: session,
-        status
-      } = useSession();
-    
-      const backendLoginStarted =
-        useRef(false);
-    
-    
-      useEffect(() => {
-              if (
-                  !isOAuthLogin ||
-                  status !== "authenticated" ||
-                  !session ||
-                  backendLoginStarted.current
-              ) {
-                  return;
-              }
+    loginToBackend();
+  }, [
+    isOAuthLogin,
+    status,
+    session,
+    loginWithAccessToken,
+    router,
+  ]);
 
-              backendLoginStarted.current = true;
+  /*
+   * ----------------------------------------------------
+   * UI
+   * ----------------------------------------------------
+   */
 
-              const loginToBackend = async () => {
-                  try {
-                      const response = await api.post(
-                          "/users/googleauth",
-                          {
-                              name: session.user?.name,
-                              email: session.user?.email,
-                              image: session.user?.image,
-                              provider: session.provider,
-                              providerAccountId:
-                                  session.providerAccountId,
-                          },
-                          {
-                              withCredentials: true,
-                          }
-                      );
-
-                      const accessToken =
-                          response.data?.accessToken;
-
-                      if (!accessToken) {
-                          throw new Error(
-                              "No access token returned"
-                          );
-                      }
-
-                      const loggedIn = loginWithAccessToken(accessToken);
-
-                      if (!loggedIn) {
-                        throw new Error("Failed to store access token");
-                      }
-
-                      router.replace("/dashboard");
-
-                  } catch (error) {
-                      backendLoginStarted.current = false;
-
-                      console.error(
-                          "OAuth backend login failed:",
-                          error.response?.data ||
-                          error.message
-                      );
-                  }
-              };
-
-              loginToBackend();
-
-          }, [
-              isOAuthLogin,
-              status,
-              session,
-              loginWithAccessToken,
-              router,
-        ]);
-
-    if (isVerified === "EMAIL_NOT_VERIFIED") {
-       return (
-         <CheckEmail email={email}/>
-       )
-    }
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div
+      className={cn("flex flex-col gap-6", className)}
+      {...props}
+    >
       <Card className="bg-card text-card-foreground">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Welcome back</CardTitle>
+          <CardTitle className="text-xl">
+            Welcome back
+          </CardTitle>
+
           <CardDescription className="text-card-foreground">
             Login with your Google account
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <FieldGroup>
+
+              {/* GOOGLE LOGIN */}
+
               <Field>
-                {/* <Button onClick={() => signIn("linkedin", {
-                  callbackUrl: "/dashboard"
-                })} variant="outline" type="button" className="bg-secondary text-secondary-foreground">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path
-                      d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
-                      fill="currentColor" />
-                  </svg>
-                  Login with linkdIn
-                </Button> */}
-                {/* <GoogleLogin /> */}
-                <Button 
-                onClick={() => signIn("google",{
-                  prompt: "select_account",
-                  callbackUrl: "/login?oauth=true",
-                })} 
-                variant="outline" type="button" className="bg-secondary text-secondary-foreground">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path
-                      d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                      fill="currentColor" />
-                  </svg>
-                  Login with Google
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading || oauthLoading}
+                  className="w-full bg-secondary text-secondary-foreground"
+                  onClick={() =>
+                    signIn("google", {
+                      prompt: "select_account",
+                      callbackUrl: "/login?oauth=true",
+                    })
+                  }
+                >
+                  {oauthLoading ? (
+                    <>
+                      <Spinner className="size-4" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      {/* Google SVG */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          fill="currentColor"
+                          d="M21.35 12.27c0-.78-.07-1.54-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42Z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M12 21.6c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.53A9.75 9.75 0 0 0 12 21.6Z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M6.54 13.68A5.86 5.86 0 0 1 6.23 12c0-.58.1-1.15.31-1.68V7.79H3.3A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.05 1.05 4.21l3.24-2.53Z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M12 6.29c1.43 0 2.72.49 3.73 1.45l2.8-2.8C16.84 3.29 14.63 2.4 12 2.4a9.75 9.75 0 0 0-8.7 5.39l3.24 2.53C6.54 8.01 8.69 6.29 12 6.29Z"
+                        />
+                      </svg>
+
+                      Login with Google
+                    </>
+                  )}
                 </Button>
               </Field>
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card text-card-foreground">
+
+              <FieldSeparator>
                 Or continue with
               </FieldSeparator>
+
+              {/* EMAIL */}
+
               <Controller
-                    name="email"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel htmlFor={field.name}>email</FieldLabel>
-                        <Input
-                          {...field}
-                          id={field.name}
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                          className="bg-input"
-                        />
-                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                      </Field>
+                name="email"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>
+                      Email
+                    </FieldLabel>
+
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="email"
+                      aria-invalid={fieldState.invalid}
+                      autoComplete="email"
+                      className="bg-input"
+                      disabled={loading || oauthLoading}
+                    />
+
+                    {fieldState.invalid && (
+                      <FieldError
+                        errors={[fieldState.error]}
+                      />
                     )}
-                  />
+                  </Field>
+                )}
+              />
+
+              {/* PASSWORD */}
+
               <Controller
-                    name="password"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel htmlFor={field.name}>password</FieldLabel>
-                        <Input
-                          {...field}
-                          id={field.name}
-                          aria-invalid={fieldState.invalid}
-                          autoComplete="off"
-                          className="bg-input"
-                        />
-                        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                      </Field>
+                name="password"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>
+                      Password
+                    </FieldLabel>
+
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="password"
+                      aria-invalid={fieldState.invalid}
+                      autoComplete="current-password"
+                      className="bg-input"
+                      disabled={loading || oauthLoading}
+                    />
+
+                    {fieldState.invalid && (
+                      <FieldError
+                        errors={[fieldState.error]}
+                      />
                     )}
-                  />
+                  </Field>
+                )}
+              />
+
+              {/* LOGIN BUTTON */}
+
               <Field>
-                <Button type="submit" className="bg-primary">Login</Button>
+                <Button
+                  type="submit"
+                  disabled={loading || oauthLoading}
+                  className="w-full bg-primary"
+                >
+                  {loading ? (
+                    <>
+                      <Spinner className="size-4" />
+                      Logging in...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
+                </Button>
+
                 <FieldDescription className="text-center text-card-foreground">
-                  Don&apos;t have an account? <a href="/signup" className="hover:bg-accent hover:text-accent-foreground">Sign up</a>
+                  Don't have an account?{" "}
+                  <a
+                    href="/signup"
+                    className="underline"
+                  >
+                    Sign up
+                  </a>
                 </FieldDescription>
               </Field>
+
             </FieldGroup>
           </form>
         </CardContent>
       </Card>
+
       <FieldDescription className="px-6 text-center text-card-foreground">
-        By clicking continue, you agree to our <a href="#" className="hover:bg-accent hover:text-accent-foreground">Terms of Service</a>{" "}
-        and <a href="#" className="hover:bg-accent hover:text-accent-foreground">Privacy Policy</a>.
+        By clicking continue, you agree to our Terms and
+        Privacy.
       </FieldDescription>
-      <div>
-         <Toaster/> 
-      </div>
     </div>
   );
 }
