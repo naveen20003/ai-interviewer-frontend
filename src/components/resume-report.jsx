@@ -42,7 +42,7 @@ export default function ResumePreviewPage() {
 
         const response = await api.get(`/grok/${id}`);
 
-        // console.log("Resume analysis:", response.data);
+        // console.log("Resume analysis:", response.data);~
 
         setData(response.data);
       } catch (error) {

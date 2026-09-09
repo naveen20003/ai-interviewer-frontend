@@ -2,57 +2,42 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import DashboardSkeleton from "./dashboard-skeleton";
 function AppDashboard() {
     const [data, setData] = useState(null);
     const [interviewData, setInterviewData] = useState(null);
     const [allResumeAnalyses, setAllResumeAnalyses] = useState([]);
     const [allInterviews, setAllInterviews] = useState([]);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
-    useEffect(() => {  
-      const dashData = async () => {
-        try {
-          const res = await api.get("/grok/dash");
-          // console.log(res.data.data);
-          
-          setData(res.data.data);
-        } catch (error) {
-          console.error("DASHBOARD API ERROR:", error);
-        }
-      };
-      const allResumeData = async () => {
-        try {
-          const res = await api.get("/grok/allresumes");
-          // console.log(res.data.data);
-          
-          setAllResumeAnalyses(res.data.data);
-        } catch (error) {
-          console.error("DASHBOARD API ERROR:", error);
-        }
-      };
-      const interviewData = async () => {
+    useEffect(() => {
+        const loadDashboard = async () => {
           try {
-            const interDash = await api.get("/interview");
-            // console.log(interDash.data);
-            setInterviewData(interDash.data);
-          } catch (error) {
-            console.error(error);
-          }
-      };
-      const AllInterviewData = async () => {
-          try {
-            const getAll = await api.get("/interview/all");
-            // console.log(getAll.data);
-            setAllInterviews(getAll.data);
-          } catch (error) {
-            console.error(error);
-          }
-      };
+            const [
+              dashboardRes,
+              resumeRes,
+              interviewRes,
+              allInterviewRes,
+            ] = await Promise.all([
+              api.get("/grok/dash"),
+              api.get("/grok/allresumes"),
+              api.get("/interview"),
+              api.get("/interview/all"),
+            ]);
 
-      dashData();
-      allResumeData();
-      interviewData();
-      AllInterviewData();
-    }, []);
+            setData(dashboardRes.data.data);
+            setAllResumeAnalyses(resumeRes.data.data);
+            setInterviewData(interviewRes.data);
+            setAllInterviews(allInterviewRes.data);
+          } catch (error) {
+            console.error("DASHBOARD API ERROR:", error);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        loadDashboard();
+      }, []);
 
     const HandleInterviewDelete = async (id) => {
       // console.log("deleteid: ", id);
@@ -77,6 +62,12 @@ function AppDashboard() {
           console.error(error);
        }
     };
+
+    if (loading) {
+      return (
+        <DashboardSkeleton />
+      )
+    }
 
   return (
                 

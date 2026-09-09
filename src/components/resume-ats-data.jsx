@@ -81,11 +81,11 @@ return (
       </div>
     </div>
 
-    {/* Section Scores */}
+   {/* Section Scores */}
     <div className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold">
-          Section Scores
+          Section Ratings
         </h3>
 
         <span className="text-xs text-muted-foreground">
@@ -93,36 +93,45 @@ return (
         </span>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-5 space-y-5">
         {Object.entries(analysis.section_scores).map(
-          ([section, score]) => (
-            <div
-              key={section}
-              className="rounded-lg border bg-muted/20 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm capitalize text-muted-foreground">
-                  {section}
-                </span>
+          ([section, score]) => {
+            const normalizedScore = Math.min(
+              Math.max(Number(score) || 0, 0),
+              10
+            );
 
-                <span className="text-sm font-semibold">
-                  {score}/100
-                </span>
-              </div>
+            const percentage = normalizedScore * 10;
 
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{
-                    width: `${Math.min(Math.max(score, 0), 100)}%`,
-                  }}
-                />
+            return (
+              <div key={section}>
+                {/* Label + Score */}
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-medium capitalize">
+                    {section.replace(/_/g, " ")}
+                  </span>
+
+                  <span className="text-sm font-semibold">
+                    {normalizedScore}/10
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{
+                      width: `${percentage}%`,
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          )
+            );
+          }
         )}
       </div>
     </div>
+
 
     {/* Missing Keywords */}
     <div className="rounded-xl border bg-card p-5 shadow-sm">
